@@ -123,12 +123,7 @@ func (a *AdminPanel) SetupRoutes(router *gin.Engine) {
     
     admin := router.Group("/admin")
     fmt.Println("DEBUG: Created /admin group")
-    
-    // остальной код...
-}
-func (a *AdminPanel) SetupRoutes(router *gin.Engine) {
-    admin := router.Group("/admin")
-    
+        
     // HTML страница
     admin.GET("/", a.handleAdminPage)
     admin.GET("", a.handleAdminPage)
