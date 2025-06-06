@@ -30,4 +30,4 @@ dist/
 
 # logs folder
 logs/
-*.log
+*.log.env
