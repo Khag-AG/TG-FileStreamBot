@@ -8,7 +8,7 @@ import (
 
     "github.com/gin-gonic/gin"
     "github.com/gorilla/websocket"
-    _ "modernc.org/sqlite"
+    _ "github.com/glebarez/sqlite"
 )
 
 // Bot структура для хранения информации о боте
