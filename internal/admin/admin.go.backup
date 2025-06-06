@@ -1,0 +1,410 @@
+// internal/admin/admin.go
+package admin
+
+import (
+    "database/sql"
+    "encoding/json"
+    "fmt"
+    "html/template"
+    "net/http"
+    "time"
+
+    "github.com/gin-gonic/gin"
+    "github.com/gorilla/websocket"
+    _ "github.com/mattn/go-sqlite3"
+)
+
+// Bot структура для хранения информации о боте
+type Bot struct {
+    ID          string    `json:"id"`
+    Token       string    `json:"token"`
+    Username    string    `json:"username"`
+    ClientName  string    `json:"client_name"`
+    ChannelID   string    `json:"channel_id"`
+    ChannelName string    `json:"channel_name"`
+    Description string    `json:"description"`
+    IsActive    bool      `json:"is_active"`
+    CreatedAt   time.Time `json:"created_at"`
+    LastActive  time.Time `json:"last_active"`
+}
+
+// File структура для информации о файле
+type File struct {
+    ID           string    `json:"id"`
+    BotID        string    `json:"bot_id"`
+    FileID       string    `json:"file_id"`
+    FileName     string    `json:"file_name"`
+    FileSize     int64     `json:"file_size"`
+    FileType     string    `json:"file_type"`
+    DownloadURL  string    `json:"download_url"`
+    CreatedAt    time.Time `json:"created_at"`
+    ExpiresAt    time.Time `json:"expires_at"`
+    DownloadCount int      `json:"download_count"`
+}
+
+// Stats структура для статистики
+type Stats struct {
+    ActiveBots    int     `json:"active_bots"`
+    TotalFiles    int     `json:"total_files"`
+    ActiveLinks   int     `json:"active_links"`
+    CacheSize     float64 `json:"cache_size_gb"`
+    CacheFreeSpace float64 `json:"cache_free_space_percent"`
+}
+
+// Settings структура для настроек
+type Settings struct {
+    CacheTime      int  `json:"cache_time_minutes"`
+    MaxCacheSize   int  `json:"max_cache_size_gb"`
+    MaxFileSize    int  `json:"max_file_size_mb"`
+    AutoCleanup    bool `json:"auto_cleanup"`
+    Compression    bool `json:"compression"`
+    TwoFactorAuth  bool `json:"two_factor_auth"`
+    IPWhitelist    bool `json:"ip_whitelist"`
+    ActionLogging  bool `json:"action_logging"`
+}
+
+// AdminPanel структура админ панели
+type AdminPanel struct {
+    db       *sql.DB
+    upgrader websocket.Upgrader
+}
+
+// NewAdminPanel создает новую админ панель
+func NewAdminPanel() (*AdminPanel, error) {
+    db, err := sql.Open("sqlite3", "./admin.db")
+    if err != nil {
+        return nil, err
+    }
+
+    admin := &AdminPanel{
+        db: db,
+        upgrader: websocket.Upgrader{
+            CheckOrigin: func(r *http.Request) bool {
+                return true // В продакшене нужно проверять origin
+            },
+        },
+    }
+
+    if err := admin.initDB(); err != nil {
+        return nil, err
+    }
+
+    return admin, nil
+}
+
+// initDB инициализирует базу данных
+func (a *AdminPanel) initDB() error {
+    queries := []string{
+        `CREATE TABLE IF NOT EXISTS bots (
+            id TEXT PRIMARY KEY,
+            token TEXT UNIQUE NOT NULL,
+            username TEXT,
+            client_name TEXT,
+            channel_id TEXT,
+            channel_name TEXT,
+            description TEXT,
+            is_active BOOLEAN DEFAULT true,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS files (
+            id TEXT PRIMARY KEY,
+            bot_id TEXT,
+            file_id TEXT,
+            file_name TEXT,
+            file_size INTEGER,
+            file_type TEXT,
+            download_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP,
+            download_count INTEGER DEFAULT 0,
+            FOREIGN KEY (bot_id) REFERENCES bots(id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )`,
+        `CREATE TABLE IF NOT EXISTS activity_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bot_id TEXT,
+            action TEXT,
+            details TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+    }
+
+    for _, query := range queries {
+        if _, err := a.db.Exec(query); err != nil {
+            return err
+        }
+    }
+
+    // Инициализация настроек по умолчанию
+    defaultSettings := map[string]string{
+        "cache_time_minutes":  "15",
+        "max_cache_size_gb":   "10",
+        "max_file_size_mb":    "100",
+        "auto_cleanup":        "true",
+        "compression":         "false",
+        "two_factor_auth":     "true",
+        "ip_whitelist":        "false",
+        "action_logging":      "true",
+    }
+
+    for key, value := range defaultSettings {
+        a.db.Exec("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", key, value)
+    }
+
+    return nil
+}
+
+// SetupRoutes настраивает маршруты админ панели
+func (a *AdminPanel) SetupRoutes(router *gin.Engine) {
+    admin := router.Group("/admin")
+    admin.Use(a.authMiddleware())
+    
+    // HTML страница
+    admin.GET("/", a.handleAdminPage)
+    
+    // API endpoints
+    api := admin.Group("/api")
+    {
+        // Боты
+        api.GET("/bots", a.handleGetBots)
+        api.POST("/bots", a.handleAddBot)
+        api.PUT("/bots/:id", a.handleUpdateBot)
+        api.DELETE("/bots/:id", a.handleDeleteBot)
+        
+        // Файлы
+        api.GET("/files", a.handleGetFiles)
+        api.DELETE("/files/:id", a.handleDeleteFile)
+        
+        // Статистика
+        api.GET("/stats", a.handleGetStats)
+        api.GET("/activity", a.handleGetActivity)
+        
+        // Настройки
+        api.GET("/settings", a.handleGetSettings)
+        api.POST("/settings", a.handleUpdateSettings)
+        
+        // WebSocket для реалтайм обновлений
+        api.GET("/ws", a.handleWebSocket)
+    }
+}
+
+// authMiddleware проверка авторизации
+func (a *AdminPanel) authMiddleware() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // Здесь должна быть проверка авторизации
+        // Например, проверка сессии или JWT токена
+        
+        // Временно пропускаем всех
+        c.Next()
+    }
+}
+
+// handleAdminPage отдает HTML страницу
+func (a *AdminPanel) handleAdminPage(c *gin.Context) {
+    // В реальном приложении HTML должен быть в отдельном файле
+    c.Header("Content-Type", "text/html")
+    c.String(200, adminHTML) // adminHTML - это HTML код из предыдущего артефакта
+}
+
+// handleGetBots возвращает список ботов
+func (a *AdminPanel) handleGetBots(c *gin.Context) {
+    rows, err := a.db.Query(`
+        SELECT id, token, username, client_name, channel_id, 
+               channel_name, description, is_active, created_at, last_active
+        FROM bots
+        ORDER BY created_at DESC
+    `)
+    if err != nil {
+        c.JSON(500, gin.H{"error": err.Error()})
+        return
+    }
+    defer rows.Close()
+
+    var bots []Bot
+    for rows.Next() {
+        var bot Bot
+        err := rows.Scan(&bot.ID, &bot.Token, &bot.Username, &bot.ClientName,
+            &bot.ChannelID, &bot.ChannelName, &bot.Description,
+            &bot.IsActive, &bot.CreatedAt, &bot.LastActive)
+        if err != nil {
+            continue
+        }
+        bots = append(bots, bot)
+    }
+
+    c.JSON(200, bots)
+}
+
+// handleAddBot добавляет нового бота
+func (a *AdminPanel) handleAddBot(c *gin.Context) {
+    var bot Bot
+    if err := c.ShouldBindJSON(&bot); err != nil {
+        c.JSON(400, gin.H{"error": err.Error()})
+        return
+    }
+
+    bot.ID = generateID()
+    bot.CreatedAt = time.Now()
+    bot.LastActive = time.Now()
+    bot.IsActive = true
+
+    _, err := a.db.Exec(`
+        INSERT INTO bots (id, token, username, client_name, channel_id, 
+                         channel_name, description, is_active, created_at, last_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, bot.ID, bot.Token, bot.Username, bot.ClientName, bot.ChannelID,
+       bot.ChannelName, bot.Description, bot.IsActive, bot.CreatedAt, bot.LastActive)
+
+    if err != nil {
+        c.JSON(500, gin.H{"error": err.Error()})
+        return
+    }
+
+    // Здесь нужно добавить бота в FileStreamBot
+    // Например, через обновление конфигурации или перезапуск с новыми параметрами
+
+    c.JSON(200, bot)
+}
+
+// handleGetStats возвращает статистику
+func (a *AdminPanel) handleGetStats(c *gin.Context) {
+    var stats Stats
+
+    // Активные боты
+    a.db.QueryRow("SELECT COUNT(*) FROM bots WHERE is_active = true").Scan(&stats.ActiveBots)
+    
+    // Всего файлов
+    a.db.QueryRow("SELECT COUNT(*) FROM files").Scan(&stats.TotalFiles)
+    
+    // Активные ссылки
+    a.db.QueryRow("SELECT COUNT(*) FROM files WHERE expires_at > datetime('now')").Scan(&stats.ActiveLinks)
+    
+    // Размер кеша (примерный расчет)
+    var totalSize int64
+    a.db.QueryRow("SELECT SUM(file_size) FROM files WHERE expires_at > datetime('now')").Scan(&totalSize)
+    stats.CacheSize = float64(totalSize) / (1024 * 1024 * 1024) // В GB
+    
+    // Свободное место (пример)
+    stats.CacheFreeSpace = 85.0 // В процентах
+
+    c.JSON(200, stats)
+}
+
+// handleGetFiles возвращает список файлов
+func (a *AdminPanel) handleGetFiles(c *gin.Context) {
+    limit := c.DefaultQuery("limit", "50")
+    offset := c.DefaultQuery("offset", "0")
+    botID := c.Query("bot_id")
+
+    query := `
+        SELECT f.id, f.bot_id, f.file_id, f.file_name, f.file_size, 
+               f.file_type, f.download_url, f.created_at, f.expires_at, 
+               f.download_count, b.username
+        FROM files f
+        JOIN bots b ON f.bot_id = b.id
+    `
+    args := []interface{}{}
+    
+    if botID != "" {
+        query += " WHERE f.bot_id = ?"
+        args = append(args, botID)
+    }
+    
+    query += " ORDER BY f.created_at DESC LIMIT ? OFFSET ?"
+    args = append(args, limit, offset)
+
+    rows, err := a.db.Query(query, args...)
+    if err != nil {
+        c.JSON(500, gin.H{"error": err.Error()})
+        return
+    }
+    defer rows.Close()
+
+    var files []map[string]interface{}
+    for rows.Next() {
+        var file File
+        var botUsername string
+        
+        err := rows.Scan(&file.ID, &file.BotID, &file.FileID, &file.FileName,
+            &file.FileSize, &file.FileType, &file.DownloadURL,
+            &file.CreatedAt, &file.ExpiresAt, &file.DownloadCount,
+            &botUsername)
+        if err != nil {
+            continue
+        }
+
+        fileMap := map[string]interface{}{
+            "id":             file.ID,
+            "bot_id":         file.BotID,
+            "bot_username":   botUsername,
+            "file_id":        file.FileID,
+            "file_name":      file.FileName,
+            "file_size":      file.FileSize,
+            "file_type":      file.FileType,
+            "download_url":   file.DownloadURL,
+            "created_at":     file.CreatedAt,
+            "expires_at":     file.ExpiresAt,
+            "download_count": file.DownloadCount,
+        }
+        files = append(files, fileMap)
+    }
+
+    c.JSON(200, files)
+}
+
+// handleWebSocket обрабатывает WebSocket соединения для реалтайм обновлений
+func (a *AdminPanel) handleWebSocket(c *gin.Context) {
+    conn, err := a.upgrader.Upgrade(c.Writer, c.Request, nil)
+    if err != nil {
+        return
+    }
+    defer conn.Close()
+
+    // Отправляем обновления каждые 5 секунд
+    ticker := time.NewTicker(5 * time.Second)
+    defer ticker.Stop()
+
+    for {
+        select {
+        case <-ticker.C:
+            stats := a.getStats()
+            if err := conn.WriteJSON(stats); err != nil {
+                return
+            }
+        }
+    }
+}
+
+// getStats получает текущую статистику
+func (a *AdminPanel) getStats() Stats {
+    var stats Stats
+    a.db.QueryRow("SELECT COUNT(*) FROM bots WHERE is_active = true").Scan(&stats.ActiveBots)
+    a.db.QueryRow("SELECT COUNT(*) FROM files").Scan(&stats.TotalFiles)
+    a.db.QueryRow("SELECT COUNT(*) FROM files WHERE expires_at > datetime('now')").Scan(&stats.ActiveLinks)
+    return stats
+}
+
+// generateID генерирует уникальный ID
+func generateID() string {
+    return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+// LogFileAccess логирует доступ к файлу
+func (a *AdminPanel) LogFileAccess(botID, fileID, fileName string, fileSize int64) {
+    id := generateID()
+    expiresAt := time.Now().Add(15 * time.Minute) // По умолчанию 15 минут
+    
+    a.db.Exec(`
+        INSERT INTO files (id, bot_id, file_id, file_name, file_size, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `, id, botID, fileID, fileName, fileSize, expiresAt)
+}
+
+// UpdateBotActivity обновляет последнюю активность бота
+func (a *AdminPanel) UpdateBotActivity(botID string) {
+    a.db.Exec("UPDATE bots SET last_active = ? WHERE id = ?", time.Now(), botID)
+}

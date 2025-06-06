@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FileStream Bot - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0b0d;
+            --bg-secondary: #141519;
+            --bg-card: #1a1b21;
+            --text-primary: #ffffff;
+            --text-secondary: #8892b0;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(45deg, #0a0b0d 25%, #141519 25%, #141519 50%, #0a0b0d 50%, #0a0b0d 75%, #141519 75%, #141519);
+            background-size: 40px 40px;
+            animation: bgMove 10s linear infinite;
+            opacity: 0.03;
+        }
+
+        @keyframes bgMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 40px; }
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            padding: 2rem;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-item:hover {
+            background: rgba(99, 102, 241, 0.1);
+            transform: translateX(5px);
+        }
+
+        .menu-item.active {
+            background: rgba(99, 102, 241, 0.2);
+            border-left: 3px solid var(--accent);
+        }
+
+        .menu-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .menu-item:hover::before {
+            left: 100%;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            padding: 2rem;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+            opacity: 0.05;
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(0.8); opacity: 0.05; }
+            50% { transform: scale(1.2); opacity: 0.1; }
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stat-change {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .stat-change.positive {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .stat-change.negative {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        /* Activity Chart */
+        .chart-container {
+            background: var(--bg-card);
+            padding: 2rem;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        /* Files Table */
+        .table-container {
+            background: var(--bg-card);
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .table-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 1rem 2rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 1.25rem 2rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .file-icon.video { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .file-icon.image { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .file-icon.document { background: rgba(99, 102, 241, 0.2); color: #6366f1; }
+
+        /* Bots Grid */
+        .bots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .bot-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bot-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+
+        .bot-status {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: statusPulse 2s infinite;
+        }
+
+        .bot-status.online {
+            background: var(--success);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+        }
+
+        .bot-status.offline {
+            background: var(--danger);
+            animation: none;
+        }
+
+        @keyframes statusPulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Settings */
+        .settings-section {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        input[type="range"] {
+            width: 200px;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: var(--gradient);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-icon:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: var(--accent);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        /* Toggle Switch */
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.1);
+            transition: .4s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background: var(--accent);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading Animation */
+        .loader {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-card);
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: slideIn 0.3s ease;
+            z-index: 3000;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.success {
+            border-color: var(--success);
+        }
+
+        .toast.error {
+            border-color: var(--danger);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">
+            <span>🚀</span>
+            FileStream Admin
+        </div>
+        
+        <nav>
+            <div class="menu-item active" onclick="showSection('dashboard')">
+                <span>📊</span>
+                <span>Дашборд</span>
+            </div>
+            <div class="menu-item" onclick="showSection('bots')">
+                <span>🤖</span>
+                <span>Управление ботами</span>
+            </div>
+            <div class="menu-item" onclick="showSection('files')">
+                <span>📁</span>
+                <span>Файлы</span>
+            </div>
+            <div class="menu-item" onclick="showSection('analytics')">
+                <span>📈</span>
+                <span>Аналитика</span>
+            </div>
+            <div class="menu-item" onclick="showSection('settings')">
+                <span>⚙️</span>
+                <span>Настройки</span>
+            </div>
+            <div class="menu-item" onclick="showSection('logs')">
+                <span>📋</span>
+                <span>Логи</span>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="content-section">
+            <div class="header">
+                <h1>Дашборд</h1>
+                <button class="btn btn-primary" onclick="refreshData()">
+                    🔄 Обновить данные
+                </button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Активные боты</div>
+                    <div class="stat-value">12</div>
+                    <span class="stat-change positive">+2 сегодня</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Обработано файлов</div>
+                    <div class="stat-value">5,847</div>
+                    <span class="stat-change positive">+15.3%</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Активные ссылки</div>
+                    <div class="stat-value">234</div>
+                    <span class="stat-change negative">-5.2%</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Размер кеша</div>
+                    <div class="stat-value">2.4 GB</div>
+                    <span class="stat-change positive">85% свободно</span>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>Активность за последние 7 дней</h3>
+                    <select class="btn btn-icon">
+                        <option>7 дней</option>
+                        <option>30 дней</option>
+                        <option>3 месяца</option>
+                    </select>
+                </div>
+                <canvas id="activityChart" height="100"></canvas>
+            </div>
+
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>Последние файлы</h3>
+                    <button class="btn btn-icon" onclick="showSection('files')">
+                        Все файлы →
+                    </button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Файл</th>
+                            <th>Размер</th>
+                            <th>Бот</th>
+                            <th>Время</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="file-info">
+                                    <div class="file-icon video">📹</div>
+                                    <div>
+                                        <div>presentation.mp4</div>
+                                        <div style="font-size: 0.85rem; color: var(--text-secondary)">Video</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>128 MB</td>
+                            <td>@client1_bot</td>
+                            <td>2 мин назад</td>
+                            <td><span style="color: var(--success)">✓ В кеше</span></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="file-info">
+                                    <div class="file-icon image">🖼️</div>
+                                    <div>
+                                        <div>banner.jpg</div>
+                                        <div style="font-size: 0.85rem; color: var(--text-secondary)">Image</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>4.2 MB</td>
+                            <td>@client2_bot</td>
+                            <td>5 мин назад</td>
+                            <td><span style="color: var(--success)">✓ В кеше</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Bots Section -->
+        <section id="bots" class="content-section" style="display: none;">
+            <div class="header">
+                <h1>Управление ботами</h1>
+                <button class="btn btn-primary" onclick="showAddBotModal()">
+                    ➕ Добавить бота
+                </button>
+            </div>
+
+            <div class="bots-grid">
+                <div class="bot-card">
+                    <div class="bot-status online"></div>
+                    <h3>@client1_bot</h3>
+                    <p style="color: var(--text-secondary); margin: 0.5rem 0;">Клиент: ООО "Компания"</p>
+                    <div style="margin: 1rem 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: var(--text-secondary)">Канал:</span>
+                            <span>Marketing Channel</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: var(--text-secondary)">Файлов сегодня:</span>
+                            <span>45</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary)">Последняя активность:</span>
+                            <span>2 мин назад</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button class="btn btn-icon" style="flex: 1;" onclick="editBot('${bot.id}')">✏️ Изменить</button>
+                        <button class="btn btn-icon" style="flex: 1;" onclick="showBotStats('${bot.id}')">📊 Статистика</button>
+                        <button class="btn btn-icon" style="background: rgba(239, 68, 68, 0.1);" onclick="deleteBot('${bot.id}')">🗑️</button>
+                    </div>
+                </div>
+
+                <div class="bot-card">
+                    <div class="bot-status online"></div>
+                    <h3>@client2_bot</h3>
+                    <p style="color: var(--text-secondary); margin: 0.5rem 0;">Клиент: ИП Иванов</p>
+                    <div style="margin: 1rem 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: var(--text-secondary)">Канал:</span>
+                            <span>Personal Blog</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: var(--text-secondary)">Файлов сегодня:</span>
+                            <span>23</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary)">Последняя активность:</span>
+                            <span>15 мин назад</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button class="btn btn-icon" style="flex: 1;">✏️ Изменить</button>
+                        <button class="btn btn-icon" style="flex: 1;">📊 Статистика</button>
+                        <button class="btn btn-icon" style="background: rgba(239, 68, 68, 0.1);">🗑️</button>
+                    </div>
+                </div>
+
+                <div class="bot-card">
+                    <div class="bot-status offline"></div>
+                    <h3>@client3_bot</h3>
+                    <p style="color: var(--text-secondary); margin: 0.5rem 0;">Клиент: Test Account</p>
+                    <div style="margin: 1rem 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: var(--text-secondary)">Канал:</span>
+                            <span>Test Channel</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="color: var(--text-secondary)">Файлов сегодня:</span>
+                            <span>0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-secondary)">Последняя активность:</span>
+                            <span style="color: var(--danger)">Оффлайн</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button class="btn btn-icon" style="flex: 1;">✏️ Изменить</button>
+                        <button class="btn btn-icon" style="flex: 1;">📊 Статистика</button>
+                        <button class="btn btn-icon" style="background: rgba(239, 68, 68, 0.1);">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="settings" class="content-section" style="display: none;">
+            <div class="header">
+                <h1>Настройки системы</h1>
+                <button class="btn btn-primary" onclick="saveSettings()">
+                    💾 Сохранить изменения
+                </button>
+            </div>
+
+            <div class="settings-section">
+                <h3 style="margin-bottom: 1.5rem;">Настройки кеширования</h3>
+                
+                <div class="setting-item">
+                    <div>
+                        <div>Время хранения файлов</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Как долго файлы остаются в кеше</div>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="cacheTime" min="5" max="60" value="15" onchange="updateCacheTime(this.value)">
+                        <span id="cacheTimeValue">15 мин</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div>Максимальный размер кеша</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Общий размер всех кешированных файлов</div>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="cacheSize" min="1" max="50" value="10" onchange="updateCacheSize(this.value)">
+                        <span id="cacheSizeValue">10 GB</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div>Максимальный размер файла</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Файлы больше этого размера не будут кешироваться</div>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="maxFileSize" min="50" max="500" value="100" step="50" onchange="updateMaxFileSize(this.value)">
+                        <span id="maxFileSizeValue">100 MB</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div>Автоочистка кеша</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Автоматически удалять устаревшие файлы</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div>Сжатие файлов</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Сжимать файлы для экономии места</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 style="margin-bottom: 1.5rem;">Настройки безопасности</h3>
+                
+                <div class="setting-item">
+                    <div>
+                        <div>Двухфакторная аутентификация</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Дополнительная защита админ панели</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div>IP Whitelist</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Разрешить доступ только с определенных IP</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <div>
+                        <div>Логирование действий</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Записывать все действия в админ панели</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Add Bot Modal -->
+    <div id="addBotModal" class="modal">
+        <div class="modal-content">
+            <h2>Добавить нового бота</h2>
+            <form onsubmit="addBot(event)">
+                <div class="form-group">
+                    <label>Токен бота</label>
+                    <input type="text" placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz" required>
+                </div>
+                <div class="form-group">
+                    <label>Название клиента</label>
+                    <input type="text" placeholder="ООО 'Компания'" required>
+                </div>
+                <div class="form-group">
+                    <label>ID канала</label>
+                    <input type="text" placeholder="-1001234567890" required>
+                </div>
+                <div class="form-group">
+                    <label>Название канала</label>
+                    <input type="text" placeholder="Marketing Channel" required>
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea rows="3" placeholder="Дополнительная информация о боте..."></textarea>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Добавить бота</button>
+                    <button type="button" class="btn btn-icon" style="flex: 1;" onclick="closeModal()">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Chart Configuration
+        const ctx = document.getElementById('activityChart')?.getContext('2d');
+        if (ctx) {
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+            gradient.addColorStop(1, 'rgba(99, 102, 241, 0.01)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                    datasets: [{
+                        label: 'Файлов обработано',
+                        data: [450, 520, 480, 610, 590, 720, 680],
+                        borderColor: '#6366f1',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#6366f1',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#8892b0'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#8892b0'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Section Navigation
+        function showSection(section) {
+            document.querySelectorAll('.content-section').forEach(s => s.style.display = 'none');
+            document.getElementById(section).style.display = 'block';
+            
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+            event.target.closest('.menu-item').classList.add('active');
+        }
+
+        // Modal Functions
+        function showAddBotModal() {
+            document.getElementById('addBotModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('addBotModal').style.display = 'none';
+        }
+
+        function addBot(event) {
+            event.preventDefault();
+            showToast('Бот успешно добавлен!', 'success');
+            closeModal();
+        }
+
+        // Settings Functions
+        function updateCacheTime(value) {
+            document.getElementById('cacheTimeValue').textContent = value + ' мин';
+        }
+
+        function updateCacheSize(value) {
+            document.getElementById('cacheSizeValue').textContent = value + ' GB';
+        }
+
+        function updateMaxFileSize(value) {
+            document.getElementById('maxFileSizeValue').textContent = value + ' MB';
+        }
+
+        function saveSettings() {
+            showToast('Настройки сохранены!', 'success');
+        }
+
+        // Toast Notification
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span>${type === 'success' ? '✅' : '❌'}</span>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Refresh Data
+        function refreshData() {
+            showToast('Данные обновлены!', 'success');
+        }
+
+        // Real-time Updates Simulation
+        setInterval(() => {
+            // Update random stats
+            const stats = document.querySelectorAll('.stat-value');
+            if (stats.length > 0) {
+                const randomStat = stats[Math.floor(Math.random() * stats.length)];
+                const currentValue = parseInt(randomStat.textContent.replace(/\D/g, ''));
+                const change = Math.floor(Math.random() * 10) - 5;
+                randomStat.textContent = (currentValue + change).toLocaleString();
+            }
+        }, 5000);
+
+        // WebSocket Connection (for real-time updates)
+        // const ws = new WebSocket('ws://localhost:8080/ws');
+        // ws.onmessage = (event) => {
+        //     const data = JSON.parse(event.data);
+        //     updateDashboard(data);
+        // };
+        // Функции для работы с ботами
+        function editBot(botId) {
+            alert('Редактирование бота: ' + botId);
+            // Здесь будет логика редактирования
+        }
+
+        function showBotStats(botId) {
+            alert('Статистика бота: ' + botId);
+            // Здесь будет показ статистики
+        }
+
+        function deleteBot(botId) {
+            if (confirm('Удалить бота?')) {
+                fetch(`/api/bots/${botId}`, { method: 'DELETE' })
+                    .then(() => {
+                        showToast('Бот удален', 'success');
+                        location.reload();
+                    })
+                    .catch(err => showToast('Ошибка: ' + err, 'error'));
+            }
+        }
+    </script>
+</body>
+</html>

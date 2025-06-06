@@ -2,6 +2,7 @@ package main
 
 import (
 	"EverythingSuckz/fsb/config"
+	"EverythingSuckz/fsb/internal/admin"
 	"EverythingSuckz/fsb/internal/bot"
 	"EverythingSuckz/fsb/internal/cache"
 	"EverythingSuckz/fsb/internal/routes"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -46,6 +46,27 @@ func runApp(cmd *cobra.Command, args []string) {
 	}
 	workers.AddDefaultClient(mainBot, mainBot.Self)
 	bot.StartUserBot(log)
+	
+	// Запускаем админ панель
+	go func() {
+		adminPanel, err := admin.NewAdminPanel()
+		if err != nil {
+			mainLogger.Error("Failed to initialize admin panel", zap.Error(err))
+			return
+		}
+		
+		adminRouter := gin.New()
+		adminRouter.Use(gin.Recovery())
+		adminPanel.SetupRoutes(adminRouter)
+		
+		adminPort := "8081"
+		mainLogger.Info("Starting admin panel", zap.String("port", adminPort))
+		
+		if err := adminRouter.Run(":" + adminPort); err != nil {
+			mainLogger.Error("Admin panel failed to start", zap.Error(err))
+		}
+	}()
+	
 	mainLogger.Info("Server started", zap.Int("port", config.ValueOf.Port))
 	mainLogger.Info("File Stream Bot", zap.String("version", versionString))
 	mainLogger.Sugar().Infof("Server is running at %s", config.ValueOf.Host)
