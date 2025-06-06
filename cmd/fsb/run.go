@@ -2,7 +2,7 @@ package main
 
 import (
 	"EverythingSuckz/fsb/config"
-	"EverythingSuckz/fsb/internal/admin"
+	// "EverythingSuckz/fsb/internal/admin"
 	"EverythingSuckz/fsb/internal/bot"
 	"EverythingSuckz/fsb/internal/cache"
 	"EverythingSuckz/fsb/internal/routes"
