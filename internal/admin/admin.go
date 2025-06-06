@@ -119,6 +119,14 @@ func (a *AdminPanel) initDB() error {
 
 // SetupRoutes настраивает маршруты админ панели
 func (a *AdminPanel) SetupRoutes(router *gin.Engine) {
+    fmt.Println("DEBUG: Starting SetupRoutes")
+    
+    admin := router.Group("/admin")
+    fmt.Println("DEBUG: Created /admin group")
+    
+    // остальной код...
+}
+func (a *AdminPanel) SetupRoutes(router *gin.Engine) {
     admin := router.Group("/admin")
     
     // HTML страница
