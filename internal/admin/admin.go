@@ -118,27 +118,43 @@ func (a *AdminPanel) initDB() error {
 }
 
 // SetupRoutes настраивает маршруты админ панели
-func (a *AdminPanel) SetupRoutes(router *gin.Engine) {
-    fmt.Println("DEBUG: Starting SetupRoutes")
-    
-    admin := router.Group("/admin")
-    fmt.Println("DEBUG: Created /admin group")
+    func (a *AdminPanel) SetupRoutes(router *gin.Engine) {
+        fmt.Println("DEBUG: Starting SetupRoutes")
         
-    // HTML страница
-    admin.GET("/", a.handleAdminPage)
-    admin.GET("", a.handleAdminPage)
-    
-    // Статические файлы
-    router.Static("/static", "./internal/admin/static")
-    
-    // API endpoints
-    api := router.Group("/api")
-    {
+        admin := router.Group("/admin")
+        fmt.Println("DEBUG: Created /admin group")
+        
+        // HTML страница
+        admin.GET("/", a.handleAdminPage)
+        fmt.Println("DEBUG: Added GET / route")
+        
+        admin.GET("", a.handleAdminPage)
+        fmt.Println("DEBUG: Added GET '' route")
+        
+        // Статические файлы
+        router.Static("/static", "./internal/admin/static")
+        fmt.Println("DEBUG: Added static files route")
+        
+        // API endpoints
+        api := router.Group("/api")
+        fmt.Println("DEBUG: Created /api group")
+        
         api.GET("/stats", a.handleGetStats)
+        fmt.Println("DEBUG: Added /api/stats")
+        
         api.GET("/bots", a.handleGetBots)
+        fmt.Println("DEBUG: Added /api/bots")
+        
         api.POST("/bots", a.handleAddBot)
+        fmt.Println("DEBUG: Added POST /api/bots")
+        
         api.GET("/files", a.handleGetFiles)
+        fmt.Println("DEBUG: Added /api/files")
+        
         api.GET("/ws", a.handleWebSocket)
+        fmt.Println("DEBUG: Added /api/ws")
+        
+        fmt.Println("DEBUG: SetupRoutes completed successfully")
     }
 }
 
