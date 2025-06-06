@@ -42,7 +42,7 @@ type AdminPanel struct {
 
 // NewAdminPanel создает новую админ панель
 func NewAdminPanel() (*AdminPanel, error) {
-    db, err := sql.Open("sqlite3", "./admin.db")
+    db, err := sql.Open("sqlite", "./admin.db")
     if err != nil {
         return nil, err
     }
