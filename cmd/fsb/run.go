@@ -2,7 +2,7 @@ package main
 
 import (
 	"EverythingSuckz/fsb/config"
-	// "EverythingSuckz/fsb/internal/admin"
+	"EverythingSuckz/fsb/internal/admin"
 	"EverythingSuckz/fsb/internal/bot"
 	"EverythingSuckz/fsb/internal/cache"
 	"EverythingSuckz/fsb/internal/routes"
@@ -36,8 +36,7 @@ func runApp(cmd *cobra.Command, args []string) {
 	// Создаем роутер
 	router := getRouter(log)
 	
-	// Инициализируем админку ДО запуска сервера
-	/*
+	// Инициализируем админку
 	adminPanel, err := admin.NewAdminPanel()
 	if err != nil {
 		mainLogger.Error("Failed to initialize admin panel", zap.Error(err))
@@ -45,7 +44,6 @@ func runApp(cmd *cobra.Command, args []string) {
 		mainLogger.Info("Admin panel initialized")
 		adminPanel.SetupRoutes(router)
 	}
-	*/
 
 	mainBot, err := bot.StartClient(log)
 	if err != nil {
