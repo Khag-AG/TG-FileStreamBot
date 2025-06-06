@@ -37,6 +37,7 @@ func runApp(cmd *cobra.Command, args []string) {
 	router := getRouter(log)
 	
 	// Инициализируем админку ДО запуска сервера
+	/*
 	adminPanel, err := admin.NewAdminPanel()
 	if err != nil {
 		mainLogger.Error("Failed to initialize admin panel", zap.Error(err))
@@ -44,6 +45,7 @@ func runApp(cmd *cobra.Command, args []string) {
 		mainLogger.Info("Admin panel initialized")
 		adminPanel.SetupRoutes(router)
 	}
+	*/
 
 	mainBot, err := bot.StartClient(log)
 	if err != nil {
