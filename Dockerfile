@@ -4,7 +4,7 @@ WORKDIR /app
 COPY . .
 RUN CGO_ENABLED=0 go build -o /app/fsb -ldflags="-w -s" ./cmd/fsb
 
-FROM scratch
+FROM alpine:latest
+RUN apk add --no-cache ca-certificates
 COPY --from=builder /app/fsb /app/fsb
-EXPOSE ${PORT}
 ENTRYPOINT ["/app/fsb", "run"]
