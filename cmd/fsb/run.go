@@ -55,16 +55,8 @@ func runApp(cmd *cobra.Command, args []string) {
 			return
 		}
 		
-		adminRouter := gin.New()
-		adminRouter.Use(gin.Recovery())
-		adminPanel.SetupRoutes(adminRouter)
-		
-		adminPort := "8081"
-		mainLogger.Info("Starting admin panel", zap.String("port", adminPort))
-		
-		if err := adminRouter.Run(":" + adminPort); err != nil {
-			mainLogger.Error("Admin panel failed to start", zap.Error(err))
-		}
+		mainLogger.Info("Admin panel initialized")
+		adminPanel.SetupRoutes(router) // Используем основной роутер
 	}()
 	
 	mainLogger.Info("Server started", zap.Int("port", config.ValueOf.Port))
