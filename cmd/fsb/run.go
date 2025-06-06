@@ -32,7 +32,18 @@ func runApp(cmd *cobra.Command, args []string) {
 	mainLogger := log.Named("Main")
 	mainLogger.Info("Starting server")
 	config.Load(log, cmd)
+	
+	// Создаем роутер
 	router := getRouter(log)
+	
+	// Инициализируем админку ДО запуска сервера
+	adminPanel, err := admin.NewAdminPanel()
+	if err != nil {
+		mainLogger.Error("Failed to initialize admin panel", zap.Error(err))
+	} else {
+		mainLogger.Info("Admin panel initialized")
+		adminPanel.SetupRoutes(router)
+	}
 
 	mainBot, err := bot.StartClient(log)
 	if err != nil {
@@ -46,18 +57,6 @@ func runApp(cmd *cobra.Command, args []string) {
 	}
 	workers.AddDefaultClient(mainBot, mainBot.Self)
 	bot.StartUserBot(log)
-	
-	// Запускаем админ панель
-	go func() {
-		adminPanel, err := admin.NewAdminPanel()
-		if err != nil {
-			mainLogger.Error("Failed to initialize admin panel", zap.Error(err))
-			return
-		}
-		
-		mainLogger.Info("Admin panel initialized")
-		adminPanel.SetupRoutes(router) // Используем основной роутер
-	}()
 	
 	mainLogger.Info("Server started", zap.Int("port", config.ValueOf.Port))
 	mainLogger.Info("File Stream Bot", zap.String("version", versionString))
