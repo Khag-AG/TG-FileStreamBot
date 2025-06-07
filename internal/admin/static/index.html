@@ -1043,11 +1043,42 @@
             document.getElementById('addBotModal').style.display = 'none';
         }
 
-        function addBot(event) {
-            event.preventDefault();
+        async function addBot(event) {
+    event.preventDefault();
+    
+    // Получаем данные из формы
+    const form = event.target;
+    const botData = {
+        token: form[0].value,        // Токен бота
+        client_name: form[1].value,  // Название клиента
+        channel_id: form[2].value,   // ID канала
+        channel_name: form[3].value, // Название канала
+        description: form[4].value   // Описание
+    };
+    
+    try {
+        // Отправляем запрос на сервер
+        const response = await fetch('/api/bots', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(botData)
+        });
+        
+        if (response.ok) {
             showToast('Бот успешно добавлен!', 'success');
             closeModal();
+            // Перезагружаем страницу чтобы увидеть нового бота
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            const error = await response.json();
+            showToast('Ошибка: ' + (error.error || 'Не удалось добавить бота'), 'error');
         }
+    } catch (error) {
+        showToast('Ошибка соединения с сервером', 'error');
+    }
+}
 
         // Settings Functions
         function updateCacheTime(value) {
